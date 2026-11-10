@@ -1,0 +1,64 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1"><title>PO WORLD 3.0</title>
+<style>
+:root{--bg:#f6f5fb;--card:#fff;--tx:#1b1a2e;--mut:#6b6a80;--ac:#6c3df4;--bd:#e4e2f0}
+@media(prefers-color-scheme:dark){:root:not([data-t=light]){--bg:#12111c;--card:#1d1b2c;--tx:#eeedf8;--mut:#9a98b3;--bd:#2c2a40}}
+:root[data-t=dark]{--bg:#12111c;--card:#1d1b2c;--tx:#eeedf8;--mut:#9a98b3;--bd:#2c2a40}
+*{box-sizing:border-box}body{margin:0;font-family:system-ui,sans-serif;background:var(--bg);color:var(--tx)}
+header{position:sticky;top:0;background:var(--card);border-bottom:1px solid var(--bd);padding:10px 14px;display:flex;justify-content:space-between;align-items:center;z-index:5}
+h1{font-size:18px;margin:0;color:var(--ac)}nav{display:flex;gap:6px;overflow-x:auto;padding:10px 14px}
+button,input,textarea{font:inherit;color:inherit}
+button{background:var(--ac);color:#fff;border:0;border-radius:10px;padding:8px 14px;cursor:pointer}
+button.g{background:transparent;color:var(--tx);border:1px solid var(--bd)}nav button{white-space:nowrap}nav button.on{background:var(--ac);color:#fff}
+main{max-width:640px;margin:0 auto;padding:0 14px 60px}.c{background:var(--card);border:1px solid var(--bd);border-radius:14px;padding:12px;margin:10px 0}
+input,textarea{width:100%;background:var(--bg);border:1px solid var(--bd);border-radius:10px;padding:10px;margin:4px 0}
+.m{color:var(--mut);font-size:13px}.r{display:flex;gap:8px;align-items:center;flex-wrap:wrap}img.p{width:100%;max-height:260px;object-fit:cover;border-radius:10px;margin-top:8px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.grid .c{margin:0}#t{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:#222;color:#fff;padding:10px 16px;border-radius:10px;display:none}
+</style></head><body>
+<header><h1>PO WORLD 3.0</h1><div class="r"><span id="who" class="m"></span><button class="g" onclick="theme()">◐</button><button id="lg" class="g" onclick="out()">Log out</button></div></header>
+<nav id="nav"></nav><main id="v"></main><div id="t"></div>
+<script>
+const API='';let me=null,tok=localStorage.pw_tok||'',tab='feed',img='';
+const $=s=>document.querySelector(s),N=n=>'₦'+Number(n).toLocaleString();
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function toast(m){const t=$('#t');t.textContent=m;t.style.display='block';setTimeout(()=>t.style.display='none',2500)}
+async function api(p,o={}){const r=await fetch(API+'/api'+p,{method:o.m||(o.b?'POST':'GET'),headers:{'Content-Type':'application/json',...(tok?{Authorization:'Bearer '+tok}:{})},body:o.b?JSON.stringify(o.b):undefined});
+ const d=await r.json().catch(()=>({}));if(!r.ok){toast(d.error||'Error');throw new Error(d.error)}return d}
+function theme(){const d=document.documentElement;d.dataset.t=d.dataset.t==='dark'?'light':'dark';localStorage.pw_t=d.dataset.t}
+if(localStorage.pw_t)document.documentElement.dataset.t=localStorage.pw_t;
+function out(){localStorage.removeItem('pw_tok');tok='';me=null;boot()}
+function pick(cb){const i=document.createElement('input');i.type='file';i.accept='image/*';i.onchange=()=>{const f=i.files[0];if(!f)return;const im=new Image();im.onload=()=>{const k=Math.min(1,800/im.width),c=document.createElement('canvas');c.width=im.width*k;c.height=im.height*k;c.getContext('2d').drawImage(im,0,0,c.width,c.height);img=c.toDataURL('image/jpeg',.7);cb();toast('Photo added')};im.src=URL.createObjectURL(f)};i.click()}
+async function boot(){if(tok){try{me=await api('/me')}catch{tok='';localStorage.removeItem('pw_tok')}}
+ $('#who').textContent=me?me.name:'';$('#lg').style.display=me?'':'none';
+ const tabs=[['feed','Feed'],['shop','Shop'],['sell','Sell'],['orders','Orders'],['games','Games']];if(me&&me.role==='admin')tabs.push(['admin','Admin']);
+ $('#nav').innerHTML=tabs.map(([k,l])=>`<button class="${k===tab?'on':'g'}" onclick="go('${k}')">${l}</button>`).join('');
+ if(!me&&tab!=='shop'&&tab!=='feed'&&tab!=='games'){return login()}render()}
+function go(t){tab=t;img='';boot()}
+function login(){$('#v').innerHTML=`<div class="c"><h3>Welcome to PO WORLD</h3><input id="n" placeholder="Name (sign up only)"><input id="e" placeholder="Email" type="email"><input id="p" placeholder="Password" type="password">
+ <div class="r"><button onclick="auth('login')">Log in</button><button class="g" onclick="auth('register')">Sign up</button></div></div>`}
+async function auth(k){const d=await api('/'+k,{b:{name:$('#n').value,email:$('#e').value,password:$('#p').value}});tok=d.token;localStorage.pw_tok=tok;boot()}
+async function render(){const v=$('#v');
+ if(tab==='feed'){const ps=await api('/posts');v.innerHTML=(me?`<div class="c"><textarea id="pb" rows="2" placeholder="What's happening, ${esc(me.name)}?"></textarea>${img?`<img class="p" src="${img}">`:''}<div class="r"><button class="g" onclick="pick(()=>render())">📷 Photo</button><button onclick="post()">Post</button></div></div>`:'<div class="c m">Log in to post. <button onclick="login()">Log in</button></div>')+
+  ps.map(p=>`<div class="c"><b>${esc(p.name)}</b> <span class="m">${new Date(p.created).toLocaleString()}</span><p>${esc(p.body)}</p>${p.img?`<img class="p" src="${p.img}">`:''}
+  <div class="r"><button class="g" onclick="like(${p.id})">${p.liked?'❤️':'🤍'} ${p.likes}</button><button class="g" onclick="cm(${p.id})">💬 ${p.comments}</button>${me&&p.author!==me.id?`<button class="g" onclick="fol(${p.author})">Follow</button>`:''}${me&&(p.author===me.id||me.role==='admin')?`<button class="g" onclick="del(${p.id})">Delete</button>`:''}</div><div id="cm${p.id}"></div></div>`).join('')}
+ if(tab==='shop'){const ps=await api('/products?q='+encodeURIComponent(window.sq||''));v.innerHTML=`<input placeholder="Search products…" value="${esc(window.sq||'')}" onchange="sq=this.value;render()"><div class="grid">`+ps.map(p=>`<div class="c">${p.img?`<img class="p" src="${p.img}">`:''}<b>${esc(p.title)}</b><div class="m">${esc(p.seller_name)} · ${p.stock} left</div><div><b>${N(p.price)}</b></div><button onclick="buy(${p.id})">Buy</button></div>`).join('')+'</div>'+(ps.length?'':'<p class="m">No products yet. Be the first to sell!</p>')}
+ if(tab==='sell'){const my=await api('/my/products'),sl=await api('/sales');v.innerHTML=`<div class="c"><h3>Seller Centre</h3><input id="pt" placeholder="Product title"><textarea id="pd" rows="2" placeholder="Description"></textarea><input id="pp" type="number" placeholder="Price (₦)"><input id="ps" type="number" placeholder="Stock"><div class="r"><button class="g" onclick="pick(()=>toast('Photo ready'))">📷 Photo</button><button onclick="addP()">List product</button></div></div>
+  <h4>My products</h4>`+my.map(p=>`<div class="c r">${esc(p.title)} · ${N(p.price)} · ${p.stock} left <button class="g" onclick="delP(${p.id})">Remove</button></div>`).join('')+`<h4>Sales</h4>`+sl.map(o=>`<div class="c">#${o.id} ${esc(o.title)} ×${o.qty} for ${esc(o.buyer_name)} · ${N(o.total)}<div class="r"><span class="m">${o.status}</span>${['shipped','delivered','cancelled'].map(s=>`<button class="g" onclick="st(${o.id},'${s}')">${s}</button>`).join('')}</div></div>`).join('')}
+ if(tab==='orders'){const os=await api('/orders');v.innerHTML=os.map(o=>`<div class="c">#${o.id} ${esc(o.title)} ×${o.qty} · ${N(o.total)}<div class="m">${o.status}</div></div>`).join('')||'<p class="m">No orders yet.</p>'}
+ if(tab==='games')games();
+ if(tab==='admin'){const s=await api('/admin/stats'),u=await api('/admin/users');v.innerHTML=`<div class="c">${Object.entries(s).map(([k,x])=>`<b>${x}</b> ${k}`).join(' · ')}</div>`+u.map(x=>`<div class="c">${esc(x.name)} <span class="m">${esc(x.email)} · ${x.role}</span></div>`).join('')}}
+async function post(){await api('/posts',{b:{body:$('#pb').value,img}});img='';render()}
+async function like(i){if(!me)return login();await api('/posts/'+i+'/like',{m:'POST',b:{}});render()}
+async function del(i){await api('/posts/'+i,{m:'DELETE'});render()}
+async function fol(i){const d=await api('/follow/'+i,{m:'POST',b:{}});toast(d.following?'Following':'Unfollowed')}
+async function cm(i){const c=await api('/posts/'+i+'/comments');$('#cm'+i).innerHTML=c.map(x=>`<div class="m"><b>${esc(x.name)}</b> ${esc(x.body)}</div>`).join('')+(me?`<input id="ci${i}" placeholder="Comment…" onkeydown="if(event.key==='Enter')sc(${i})">`:'')}
+async function sc(i){await api('/posts/'+i+'/comments',{b:{body:$('#ci'+i).value}});cm(i)}
+async function buy(i){if(!me)return login();const q=prompt('Quantity?','1');if(!q)return;await api('/orders',{b:{product:i,qty:q}});toast('Order placed!')}
+async function addP(){await api('/products',{b:{title:$('#pt').value,descr:$('#pd').value,price:$('#pp').value,stock:$('#ps').value,img}});img='';toast('Listed!');render()}
+async function delP(i){await api('/products/'+i,{m:'DELETE'});render()}
+async function st(i,s){await api('/orders/'+i+'/status',{b:{status:s}});render()}
+async function games(){const lb=await api('/scores/tap');let n=0,t=10,on=0,iv;
+ $('#v').innerHTML=`<div class="c" style="text-align:center"><h3>Tap Rush ⚡</h3><p class="m">Tap as many times as you can in 10 seconds</p><h1 id="sc">0</h1><div id="tm" class="m">10s</div><button id="gb" style="font-size:22px;padding:24px 40px">TAP!</button></div><div class="c"><b>Top players</b>${lb.map((x,i)=>`<div class="r">${i+1}. ${esc(x.name)} — ${x.score}</div>`).join('')||'<div class="m">No scores yet</div>'}</div>`;
+ $('#gb').onclick=()=>{if(!on){on=1;n=0;t=10;iv=setInterval(async()=>{t--;$('#tm').textContent=t+'s';if(t<=0){clearInterval(iv);on=0;toast('Score: '+n);if(me)try{await api('/scores',{b:{game:'tap',score:n}});games()}catch{}else toast('Log in to save scores')}},1000)}if(on){n++;$('#sc').textContent=n}}}
+boot();
+</script></body></html>
